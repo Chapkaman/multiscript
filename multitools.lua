@@ -233,34 +233,282 @@ OtherTab:AddToggle({
     end
 })
 
+
+
+
+
+
+local AimbotTab = Window:MakeTab({
+    Name = "Aimbot"
+})
+
+
+
+
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Holding = false
+
+_G.AimbotEnabled = false
+_G.TeamCheck = false -- If set to true then the script would only lock your aim at enemy team members.
+_G.AimPart = "Head" -- Where the aimbot script would lock at.
+_G.Sensitivity = 0 -- How many seconds it takes for the aimbot script to officially lock onto the target's aimpart.
+
+local function GetClosestPlayer()
+	local MaximumDistance = math.huge
+	local Target = nil
+  
+  	coroutine.wrap(function()
+    		wait(20); MaximumDistance = math.huge -- Reset the MaximumDistance so that the Aimbot doesn't remember it as a very small variable and stop capturing players...
+  	end)()
+
+	for _, v in next, Players:GetPlayers() do
+		if v.Name ~= LocalPlayer.Name then
+			if _G.TeamCheck == true then
+				if v.Team ~= LocalPlayer.Team then
+					if v.Character ~= nil then
+						if v.Character:FindFirstChild("HumanoidRootPart") ~= nil then
+							if v.Character:FindFirstChild("Humanoid") ~= nil and v.Character:FindFirstChild("Humanoid").Health ~= 0 then
+								local ScreenPoint = Camera:WorldToScreenPoint(v.Character:WaitForChild("HumanoidRootPart", math.huge).Position)
+								local VectorDistance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(ScreenPoint.X, ScreenPoint.Y)).Magnitude
+								
+								if VectorDistance < MaximumDistance then
+									Target = v
+                  							MaximumDistance = VectorDistance
+								end
+							end
+						end
+					end
+				end
+			else
+				if v.Character ~= nil then
+					if v.Character:FindFirstChild("HumanoidRootPart") ~= nil then
+						if v.Character:FindFirstChild("Humanoid") ~= nil and v.Character:FindFirstChild("Humanoid").Health ~= 0 then
+							local ScreenPoint = Camera:WorldToScreenPoint(v.Character:WaitForChild("HumanoidRootPart", math.huge).Position)
+							local VectorDistance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(ScreenPoint.X, ScreenPoint.Y)).Magnitude
+							
+							if VectorDistance < MaximumDistance then
+								Target = v
+               							MaximumDistance = VectorDistance
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return Target
+end
+
+UserInputService.InputBegan:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if Holding == true and _G.AimbotEnabled == true then
+        TweenService:Create(Camera, TweenInfo.new(_G.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, GetClosestPlayer().Character[_G.AimPart].Position)}):Play()
+    end
+end)
+
+
+
+
+
+
+AimbotTab:AddToggle({
+	Name = "Aimbot",
+	Default = false,
+	Callback = function(Value)
+		_G.AimbotEnabled = Value
+	end    
+})
+
+AimbotTab:AddBind({
+	Name = "Activer/Désactiver Aimbot",
+	Default = Enum.KeyCode.LeftControl,
+	Hold = true,
+	Callback = function(Value)
+		_G.AimbotEnabled = Value
+	end    
+})
+
+AimbotTab:AddToggle({
+	Name = "Vérifier l'équipe",
+	Default = false,
+	Callback = function(Value)
+		_G.TeamCheck = Value
+	end    
+})
+
+AimbotTab:AddDropdown({
+    Name = "Partie du corps",
+    Default = "Head",
+    Options = {"Head", "Torso"},
+    Callback = function(Value)
+        if Value == "Head" then
+            _G.AimPart = "Head"
+        else
+            _G.AimPart = "Torso"
+        end
+    end    
+})
+
+
+
+local AimbotSection = AimbotTab:AddSection({
+    Name = "Crosshair"
+})
+
+local CrosshairEnabled = false
+local CrosshairSize = 10
+local CrosshairColor = Color3.new(1, 1, 1)
+
+local CrosshairVertical = Drawing.new("Line")
+CrosshairVertical.Visible = false
+CrosshairVertical.From = Vector2.new(0, 0)
+CrosshairVertical.To = Vector2.new(0, 0)
+CrosshairVertical.Color = CrosshairColor
+CrosshairVertical.Thickness = 2
+
+local CrosshairHorizontal = Drawing.new("Line")
+CrosshairHorizontal.Visible = false
+CrosshairHorizontal.From = Vector2.new(0, 0)
+CrosshairHorizontal.To = Vector2.new(0, 0)
+CrosshairHorizontal.Color = CrosshairColor
+CrosshairHorizontal.Thickness = 2
+
+
+
+local ToggleBox = AimbotSection:AddToggle({
+    Name = "Afficher Crosshair",
+    Default = false,
+    Callback = function(Value)
+        CrosshairEnabled = Value
+        CrosshairVertical.Visible = CrosshairEnabled
+        CrosshairHorizontal.Visible = CrosshairEnabled
+    end
+})
+
+local ColorDropdown = AimbotSection:AddDropdown({
+    Name = "Couleur de la croix",
+    Default = "Blanc",
+    Options = {"Blanc", "Rouge", "Vert", "Bleu"},
+    Callback = function(Value)
+        if Value == "Blanc" then
+            CrosshairColor = Color3.new(1, 1, 1)
+        elseif Value == "Rouge" then
+            CrosshairColor = Color3.new(1, 0, 0)
+        elseif Value == "Vert" then
+            CrosshairColor = Color3.new(0, 1, 0)
+        elseif Value == "Bleu" then
+            CrosshairColor = Color3.new(0, 0, 1)
+        end
+        CrosshairVertical.Color = CrosshairColor
+        CrosshairHorizontal.Color = CrosshairColor
+    end
+})
+
+local function UpdateCrosshair()
+    local MousePosition = Vector2.new(game:GetService("Workspace").CurrentCamera.ViewportSize.X / 2, game:GetService("Workspace").CurrentCamera.ViewportSize.Y / 2)
+    CrosshairVertical.From = Vector2.new(MousePosition.X, MousePosition.Y - CrosshairSize)
+    CrosshairVertical.To = Vector2.new(MousePosition.X, MousePosition.Y + CrosshairSize)
+    CrosshairHorizontal.From = Vector2.new(MousePosition.X - CrosshairSize, MousePosition.Y)
+    CrosshairHorizontal.To = Vector2.new(MousePosition.X + CrosshairSize, MousePosition.Y)
+end
+
+game:GetService("UserInputService").InputChanged:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseMovement then
+        if CrosshairEnabled then
+            UpdateCrosshair()
+        end
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if CrosshairEnabled then
+        UpdateCrosshair()
+    end
+end)
+
+
+
+local function NameEspOn()
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local nameLabel = player.Character.HumanoidRootPart:FindFirstChild("ESP_NameLabel")
+            if nameLabel then
+                nameLabel.MaxDistance = 40960  -- Modifiez la valeur ici si nécessaire
+            else
+                nameLabel = Instance.new("BillboardGui")
+                nameLabel.Name = "ESP_NameLabel"
+                nameLabel.Size = UDim2.new(0, 100, 0, 20)
+                nameLabel.StudsOffset = Vector3.new(0, 7, 0)
+                nameLabel.MaxDistance = 40960  -- Modifiez la valeur ici si nécessaire
+                nameLabel.AlwaysOnTop = true
+                nameLabel.Enabled = true
+                -- Créez un label pour le nom du joueur
+                local nameLabelTextLabel = Instance.new("TextLabel")
+                nameLabelTextLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabelTextLabel.BackgroundTransparency = 1
+                nameLabelTextLabel.TextColor3 = player.TeamColor.Color  -- Utilisez la couleur de l'équipe
+                nameLabelTextLabel.Text = player.Name
+                nameLabelTextLabel.Font = Enum.Font.SourceSansBold
+                nameLabelTextLabel.TextSize = 16
+                nameLabelTextLabel.Parent = nameLabel
+                nameLabel.Parent = player.Character.HumanoidRootPart
+            end
+        end
+    end
+end
+
+
+
+
 local VisualTab = Window:MakeTab({
     Name = "Visuels"
 })
 
-local espDistance = 1000
+local espDistance = 100000
+local isESPEnabled = false -- Variable pour garder une trace de l'état de la ToggleBox
+
 local espToggle = VisualTab:AddToggle({
     Name = "ESP des pseudos",
     Default = false,
     Callback = function(Value)
-        if Value then
+        isESPEnabled = Value -- Met à jour la variable isESPEnabled avec la valeur de la ToggleBox
+
+        if isESPEnabled then
             for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
                 if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     local nameLabel = player.Character.HumanoidRootPart:FindFirstChild("ESP_NameLabel")
                     if nameLabel then
-                        nameLabel.MaxDistance = 40960  -- Modifiez la valeur ici si nécessaire
+                        nameLabel.MaxDistance = espDistance
                     else
                         nameLabel = Instance.new("BillboardGui")
                         nameLabel.Name = "ESP_NameLabel"
                         nameLabel.Size = UDim2.new(0, 100, 0, 20)
                         nameLabel.StudsOffset = Vector3.new(0, 7, 0)
-                        nameLabel.MaxDistance = 40960  -- Modifiez la valeur ici si nécessaire
+                        nameLabel.MaxDistance = espDistance
                         nameLabel.AlwaysOnTop = true
                         nameLabel.Enabled = true
                         -- Créez un label pour le nom du joueur
                         local nameLabelTextLabel = Instance.new("TextLabel")
                         nameLabelTextLabel.Size = UDim2.new(1, 0, 1, 0)
                         nameLabelTextLabel.BackgroundTransparency = 1
-                        nameLabelTextLabel.TextColor3 = player.TeamColor.Color  -- Utilisez la couleur de l'équipe
+                        nameLabelTextLabel.TextColor3 = player.TeamColor.Color -- Utilisez la couleur de l'équipe
                         nameLabelTextLabel.Text = player.Name
                         nameLabelTextLabel.Font = Enum.Font.SourceSansBold
                         nameLabelTextLabel.TextSize = 16
@@ -269,9 +517,29 @@ local espToggle = VisualTab:AddToggle({
                     end
                 end
             end
+
+            while isESPEnabled do
+                wait(1) -- Met à jour toutes les secondes
+
+                -- Vérifiez si la ToggleBox est toujours activée
+                if not isESPEnabled then
+                    break
+                end
+            end
+        else
+            -- Supprimez l'ESP des pseudos lorsque la ToggleBox est désactivée
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local nameLabel = player.Character.HumanoidRootPart:FindFirstChild("ESP_NameLabel")
+                    if nameLabel then
+                        nameLabel:Destroy()
+                    end
+                end
+            end
         end
     end
 })
+
 
 
 local tracerzzz = false
@@ -787,7 +1055,7 @@ LeaveTab:AddButton({
     Callback = function()
         StopFlying()
         OrionLib:MakeNotification({
-            Name = "Le script s'auto détruira dans 5 secondes.",
+            Name = "Le script se fermera dans 5 secondes.",
             Content = "KABOOOOOOOOOOM",
             Image = "rbxassetid://4483345998",
             Time = 5
@@ -798,4 +1066,3 @@ LeaveTab:AddButton({
 })
 
 OrionLib:Init()
-
